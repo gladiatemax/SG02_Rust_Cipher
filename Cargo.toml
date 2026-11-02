@@ -1,0 +1,44 @@
+[package]
+name = "sg02-encrypt"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mattei"]
+description = "Cifratura a soglia SG02 (TDH2) su Ed25519 tramite thetacrypt, configurata da variabili d'ambiente"
+publish = false
+
+# Il pacchetto e' la radice del proprio workspace. thetacrypt ha un suo
+# workspace in thetacrypt/src: va escluso, altrimenti cargo prova a
+# considerarne i membri parte di questo.
+[workspace]
+exclude = ["thetacrypt"]
+
+[[bin]]
+name = "sg02-encrypt"
+path = "src/main.rs"
+
+[dependencies]
+# Fork di thetacrypt usato dal resto del sistema (vedi README, sezione
+# "Sorgente di thetacrypt"). Si dipende SOLO da theta_schemes: niente
+# rete, gRPC, tokio o orchestrazione.
+theta_schemes = { path = "thetacrypt/src/core/schemes" }
+
+# Dipendenza presente solo per inoltrare la feature `use-system-libs`:
+# rug -> gmp-mpfr-sys compila GMP e MPFR dai sorgenti, operazione che in
+# cross-compilazione spesso non riesce. Con la feature `system-gmp` si
+# linkano invece le librerie di sistema (pkg install gmp mpfr).
+gmp-mpfr-sys = { version = "1.4", optional = true }
+
+[dev-dependencies]
+# Solo per i test: i tipi ThresholdScheme/Group servono a generare chiavi.
+theta_proto = { path = "thetacrypt/src/proto" }
+
+[features]
+default = []
+system-gmp = ["dep:gmp-mpfr-sys", "gmp-mpfr-sys/use-system-libs"]
+
+[profile.release]
+# Un panic dentro thetacrypt (es. punto non valido nella chiave pubblica)
+# deve diventare un codice d'uscita, non un abort: serve unwind.
+panic = "unwind"
+lto = true
+codegen-units = 1

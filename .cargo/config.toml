@@ -1,0 +1,16 @@
+# mcore (MIRACL core, vendorizzato in thetacrypt) contiene riferimenti
+# impliciti a dereferenziazioni di puntatori grezzi, che da Rust 1.89 sono
+# un errore (lint `dangerous_implicit_autorefs`, deny by default). Il codice
+# interessato e' in moduli non usati da SG02/Ed25519 (es. rsa2048/ff.rs).
+# Il flag riporta il comportamento dei compilatori precedenti, con cui
+# thetacrypt e' stato sviluppato. Su toolchain piu' vecchie il lint non
+# esiste e rustc emette solo un avviso `unknown lint`.
+#
+# Stesso discorso per `legacy_derive_helpers` (theta_schemes,
+# groups/group.rs: `#[rasn(enumerated)]` scritto prima di
+# `#[derive(AsnType)]`), passato a errore dalle toolchain recenti.
+#
+# Entrambi i flag agiscono solo su lint: nessun errore di compilazione
+# vero viene nascosto, e il codice generato e' identico.
+[build]
+rustflags = ["-A", "dangerous_implicit_autorefs", "-A", "legacy_derive_helpers"]
