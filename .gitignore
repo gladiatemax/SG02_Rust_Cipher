@@ -1,8 +1,9 @@
 /target/
 
-# Sorgente di thetacrypt: va aggiunto come submodule git del fork (vedi
-# README). Finche' non lo e', la copia locale resta fuori dal repository.
-/thetacrypt/
+# Codice generato da protoc durante la build di theta_proto: si rigenera.
+/thetacrypt/src/proto/src/protocol_types.rs
+/thetacrypt/src/proto/src/proxy_api.rs
+/thetacrypt/src/proto/src/scheme_types.rs
 
 # Materiale di chiave e output di prova
 *.pub

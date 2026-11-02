@@ -2,6 +2,8 @@
 name = "sg02-encrypt"
 version = "0.1.0"
 edition = "2021"
+# Nessuna dipendenza del Cargo.lock richiede una versione piu' recente.
+rust-version = "1.88"
 authors = ["Mattei"]
 description = "Cifratura a soglia SG02 (TDH2) su Ed25519 tramite thetacrypt, configurata da variabili d'ambiente"
 publish = false

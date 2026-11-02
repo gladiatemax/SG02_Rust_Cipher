@@ -53,7 +53,7 @@ Prima di emettere un solo byte, il programma rilegge il crittogramma serializzat
 
 | Requisito | Perché |
 |---|---|
-| Rust ≥ 1.85 | Versione minima richiesta da `rug` 1.30 nel `Cargo.lock`. Verificato con Rust 1.97. |
+| Rust ≥ 1.88 | `rust-toolchain.toml` fissa la 1.88.0, la toolchain con cui è stato compilato `thetacli` nel sistema di riferimento; con rustup viene selezionata automaticamente. Nessuna dipendenza del `Cargo.lock` richiede una versione più recente. La build è stata provata anche con Rust 1.97. |
 | `protoc` (Protocol Buffers) nel `PATH`, o la variabile `PROTOC` | Lo script di build di `theta_proto`, dipendenza di `theta_schemes`, genera codice Rust dai file `.proto` a ogni compilazione. Su FreeBSD: `pkg install protobuf`. |
 | Compilatore C, `m4`, GNU make | `rug` → `gmp-mpfr-sys` compila GMP e MPFR dai sorgenti. Su FreeBSD: `pkg install gmake m4`. |
 
@@ -69,7 +69,7 @@ La feature `system-gmp` attiva `use-system-libs` di `gmp-mpfr-sys`. Non è stata
 ### Build
 
 ```sh
-git clone --recurse-submodules <url di questo repository>
+git clone <url di questo repository>
 cd sg02-encrypt
 cargo build --release --locked
 # binario: target/release/sg02-encrypt
@@ -85,21 +85,34 @@ cargo vendor --locked vendor    # su una macchina con rete
 
 ### Avvisi del compilatore
 
-`.cargo/config.toml` disattiva due lint (`dangerous_implicit_autorefs`, `legacy_derive_helpers`) che le toolchain Rust recenti trasformano in errori nel codice di `mcore` e `theta_schemes`. Sono lint, non errori di tipo: il codice compilato è identico a quello prodotto dalle toolchain con cui thetacrypt è stato sviluppato. Gli avvisi restanti provengono da thetacrypt e non da questo crate.
+`.cargo/config.toml` disattiva due lint (`dangerous_implicit_autorefs`, `legacy_derive_helpers`) che le toolchain Rust successive alla 1.88 trasformano in errori nel codice di `mcore` e `theta_schemes`. Con la 1.88 fissata non servono, ma restano come protezione per chi compila con il Rust di sistema (es. `pkg install rust` su FreeBSD), che ignora `rust-toolchain.toml`. Sono lint, non errori di tipo: il codice compilato è identico a quello prodotto dalle toolchain con cui thetacrypt è stato sviluppato. Gli avvisi restanti provengono da thetacrypt e non da questo crate.
 
 ## Sorgente di thetacrypt
 
-La dipendenza è per percorso, `thetacrypt/src/core/schemes`, e il percorso va popolato con il **fork di thetacrypt usato dal resto del sistema**, non con il repository originale. Il fork modifica la serializzazione dei punti nell'hash della prova delle decifrature parziali (`h2`) per allinearla al firmware della Nitrokey 3.
+La directory `thetacrypt/` contiene una **copia parziale della versione di thetacrypt usata dal resto del sistema**, con le modifiche locali fatte per la tesi. Il repository originale non va usato. La copia comprende solo:
 
-Quella modifica non tocca la cifratura. `encrypt` usa soltanto `to_bytes`, cioè la codifica non compressa, che è invariata. Il fork resta comunque l'unica sorgente da usare, così che cifratura e decifratura compilino lo stesso codice.
+- `LICENSE.txt` (Apache 2.0);
+- `src/core/schemes`, cioè `theta_schemes`, `theta_derive` e `mcore`;
+- `src/proto`, cioè `theta_proto`.
+
+Rete, orchestrazione e servizio gRPC restano fuori, anche se `theta_proto` porta comunque con sé `tonic` e `prost`. Lo script di build di `theta_proto` scrive i file generati in `thetacrypt/src/proto/src/`, esclusi da git.
+
+Le modifiche locali riguardano la serializzazione dei punti nell'hash della prova delle decifrature parziali (`h2`), allineata al firmware della Nitrokey 3, e non toccano la cifratura: `encrypt` usa soltanto `to_bytes`, la codifica non compressa, invariata. La copia serve comunque a far compilare lo stesso codice a chi cifra e a chi decifra.
+
+### Aggiornare la copia
 
 ```sh
-git submodule add <url del fork> thetacrypt
-git -C thetacrypt checkout <commit>
-git add thetacrypt .gitmodules
+scripts/vendor-thetacrypt.sh /percorso/a/thetacrypt
+cargo test --release --locked
+git add thetacrypt && git commit
 ```
 
-Del workspace thetacrypt si compilano solo `theta_schemes` e le sue dipendenze (`theta_proto`, `theta_derive`, `mcore`). Rete, orchestrazione e servizio gRPC restano fuori, anche se `theta_proto` porta comunque con sé `tonic` e `prost`. Lo script di build di `theta_proto` scrive i file generati in `thetacrypt/src/proto/src/`.
+Lo script sostituisce l'intera directory `thetacrypt/`. Se la sorgente è un clone git, registra anche:
+
+- in `thetacrypt/VENDORED.md`, il commit di partenza, il remote e l'elenco dei file modificati;
+- in `thetacrypt/MODIFICHE.patch`, il diff delle modifiche locali.
+
+Questo rende verificabile l'origine del codice e assolve l'obbligo di segnalare i file modificati previsto dalla licenza Apache 2.0 (sez. 4b).
 
 ## Test
 

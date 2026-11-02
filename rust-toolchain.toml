@@ -1,0 +1,6 @@
+# Toolchain con cui e' stato compilato thetacli nel sistema di riferimento
+# (cargo 1.88.0). Ha effetto solo con rustup; senza rustup vale il
+# `rust-version` minimo dichiarato in Cargo.toml.
+[toolchain]
+channel = "1.88.0"
+profile = "minimal"
