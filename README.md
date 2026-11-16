@@ -85,7 +85,16 @@ cargo vendor --locked vendor    # su una macchina con rete
 
 ### Avvisi del compilatore
 
-`.cargo/config.toml` disattiva due lint (`dangerous_implicit_autorefs`, `legacy_derive_helpers`) che le toolchain Rust successive alla 1.88 trasformano in errori nel codice di `mcore` e `theta_schemes`. Con la 1.88 fissata non servono, ma restano come protezione per chi compila con il Rust di sistema (es. `pkg install rust` su FreeBSD), che ignora `rust-toolchain.toml`. Sono lint, non errori di tipo: il codice compilato è identico a quello prodotto dalle toolchain con cui thetacrypt è stato sviluppato. Gli avvisi restanti provengono da thetacrypt e non da questo crate.
+La build non produce avvisi. Quelli di thetacrypt (import e variabili inutilizzati, API deprecate, codice morto) sono disattivati da una tabella `[lints]` aggiunta ai `Cargo.toml` dei crate copiati in `thetacrypt/`. La tabella non tocca il codice sorgente e non si applica a `sg02-encrypt`, per il quale gli avvisi restano attivi. L'elenco dei file modificati è in `thetacrypt/VENDORED.md`.
+
+La stessa tabella disattiva due lint che le toolchain Rust successive alla 1.88 trasformano in errori:
+
+- `dangerous_implicit_autorefs`, in `mcore`, nei moduli RSA non usati da SG02;
+- `legacy_derive_helpers`, in `theta_schemes`.
+
+Con la 1.88 fissata non servono, ma proteggono chi compila con il Rust di sistema (es. `pkg install rust` su FreeBSD), che ignora `rust-toolchain.toml`. Sono lint, non errori di tipo: il codice compilato è identico.
+
+`legacy_derive_helpers` segnala un costrutto che una versione futura di Rust rifiuterà del tutto. `.cargo/config.toml` disattiva la nota di future incompatibilità stampata a ogni build. Il limite è noto: con una toolchain che rifiuta quel costrutto, `theta_schemes` va corretto a monte, spostando `#[rasn(enumerated)]` dopo `#[derive(AsnType)]` in `groups/group.rs`.
 
 ## Sorgente di thetacrypt
 

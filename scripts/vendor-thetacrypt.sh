@@ -46,6 +46,29 @@ for f in protocol_types.rs proxy_api.rs scheme_types.rs; do
     rm -f "$DEST/src/proto/src/$f"
 done
 
+# Avvisi del compilatore. thetacrypt genera decine di avvisi (import e
+# variabili inutilizzati, API deprecate, ...) e contiene due costrutti che le
+# toolchain Rust recenti trattano come errori (`dangerous_implicit_autorefs`
+# in mcore, `legacy_derive_helpers` in theta_schemes). Una tabella [lints]
+# aggiunta ai soli crate copiati li silenzia senza toccare il codice
+# sorgente e senza effetto su sg02-encrypt, i cui avvisi restano attivi.
+# Le regole riguardano solo la diagnostica: il codice generato e' identico.
+LINTED=""
+for m in src/core/schemes src/core/schemes/derive src/core/schemes/mcore src/proto; do
+    toml="$DEST/$m/Cargo.toml"
+    [ -f "$toml" ] || die "manca $toml"
+    grep -q '^\[lints' "$toml" && die "$toml ha gia' una tabella [lints]: integrarla a mano"
+    cat >> "$toml" <<'EOF'
+
+# --- aggiunto da sg02-encrypt/scripts/vendor-thetacrypt.sh ---------------
+[lints.rust]
+warnings = "allow"
+legacy_derive_helpers = "allow"
+dangerous_implicit_autorefs = "allow"
+EOF
+    LINTED="$LINTED $m/Cargo.toml"
+done
+
 PATHS="src/core/schemes src/proto"
 {
     echo "# thetacrypt (copia parziale)"
@@ -75,6 +98,15 @@ PATHS="src/core/schemes src/proto"
         echo "La sorgente non e' un clone git: commit di partenza e modifiche non"
         echo "sono ricostruibili automaticamente. Annotarli qui a mano."
     fi
+    echo
+    echo "## Modifiche introdotte dalla copia"
+    echo
+    echo "In fondo a questi file e' stata aggiunta una tabella \`[lints.rust]\` che"
+    echo "disattiva gli avvisi del compilatore e due lint resi errori dalle toolchain"
+    echo "recenti. Non compare in \`MODIFICHE.patch\`, che descrive solo le modifiche"
+    echo "presenti nella sorgente:"
+    echo
+    for f in $LINTED; do echo "- \`$f\`"; done
 } > "$DEST/VENDORED.md"
 
 if git -C "$SRC" rev-parse --git-dir >/dev/null 2>&1; then
