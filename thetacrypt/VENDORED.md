@@ -1,6 +1,6 @@
 # thetacrypt (copia parziale)
 
-Copiato con `scripts/vendor-thetacrypt.sh` il 2026-11-03 09:27 UTC.
+Copiato con `scripts/vendor-thetacrypt.sh` il 2026-11-16 14:54 UTC.
 Contiene solo LICENSE.txt, src/core/schemes src/proto. Licenza: Apache 2.0 (LICENSE.txt).
 
 - Upstream: https://github.com/cryptobern/thetacrypt
