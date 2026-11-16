@@ -1,0 +1,144 @@
+diff --git a/src/core/schemes/derive/src/lib.rs b/src/core/schemes/derive/src/lib.rs
+index 29ddea9..4906113 100644
+--- a/src/core/schemes/derive/src/lib.rs
++++ b/src/core/schemes/derive/src/lib.rs
+@@ -424,6 +424,27 @@ pub fn derive_ec_pairing_impl(input: TokenStream) -> TokenStream {
+                 buf
+             }
+ 
++            // ---------TESI----------
++
++            pub fn to_compressed_bytes_sec1(&self) -> Vec<u8> {
++            let mut buf: Vec<u8>;
++            
++            unsafe {
++                match self.i {
++                    0 => {
++                        buf = vec![0; MODBYTES + 1];
++                        self.value.ecp.tobytes(&mut buf, true)
++                    },
++                    // ECP2 e FP12 non hanno un formato compresso SEC1 standard —
++                    // questo metodo non dovrebbe mai essere chiamato su i=1 o i=2
++                    _ => panic!("to_compressed_bytes_sec1 not supported for ECP2/FP12")
++                }
++            }
++            buf
++        }
++
++        // ---------TESI----------
++
+             pub fn from_bytes(bytes: &[u8], i:u8) -> Self {
+                 match i {
+                     0 => Self { value:ECPoint{ecp:ManuallyDrop::new(ECP::frombytes(bytes))}, i:0},
+@@ -578,6 +599,23 @@ pub fn derive_ec_impl(input: TokenStream) -> TokenStream {
+                 buf
+             }
+ 
++            // ---------TESI----------
++
++            pub fn to_compressed_bytes_sec1(&self) -> Vec<u8> {
++                // Formato firmware: 02/03 || y_be con sign(x) nel prefisso
++                let mut full = vec![0u8; 2 * MODBYTES + 1];
++                self.value.tobytes(&mut full, false);
++                let x_lsb = full[MODBYTES as usize];
++                let prefix = 0x02u8 | (x_lsb & 1);
++                let mut buf = vec![0u8; MODBYTES + 1];
++                
++                buf[0] = prefix;
++                buf[1..].copy_from_slice(&full[MODBYTES as usize + 1..2 * MODBYTES as usize + 1]);
++                buf
++            }
++
++            // ---------TESI----------
++
+             pub fn from_bytes(bytes: &[u8]) -> Self {
+                 Self { value:ECP::frombytes(bytes) }
+             }
+@@ -679,6 +717,11 @@ pub fn derive_group_operations(input: TokenStream) -> TokenStream {
+     let fields18 = groups.clone();
+     let fields19 = groups.clone();
+     let fields20 = groups.clone();
++    // ---------TESI----------
++
++    let fields21 = groups.clone();
++
++    // ---------TESI----------
+     let fields27 = groups.clone();
+ 
+     let pfields1 = pairing_groups.clone();
+@@ -944,6 +987,18 @@ pub fn derive_group_operations(input: TokenStream) -> TokenStream {
+                 }
+             }
+ 
++            // ---------TESI----------
++
++            fn to_compressed_bytes_sec1(&self) -> Vec<u8> {
++                unsafe {
++                    match self {
++                        #(Self::#fields21(x) => x.to_compressed_bytes_sec1()),*
++                    }
++                }
++            }
++
++            // ---------TESI----------
++
+             fn to_string(&self) -> String {
+                 unsafe {
+                     match self {
+diff --git a/src/core/schemes/src/dl_schemes/ciphers/sg02.rs b/src/core/schemes/src/dl_schemes/ciphers/sg02.rs
+index 83ae32e..962f650 100644
+--- a/src/core/schemes/src/dl_schemes/ciphers/sg02.rs
++++ b/src/core/schemes/src/dl_schemes/ciphers/sg02.rs
+@@ -404,7 +404,13 @@ impl Serializable for Sg02DecryptionShare {
+                 w.write_element(&(self.id as u64))?;
+                 w.write_element(&(self.get_group().clone() as i32))?;
+                 w.write_element(&self.label.as_slice())?;
++                // ---------TESI----------
++
++                // Serializza uᵢ in formato compresso SEC1 (33 byte: 02/03||y_be).
++                // ECP::frombytes decomprime automaticamente in from_bytes — nessuna modifica lì.
+                 w.write_element(&self.data.to_bytes().as_slice())?;
++
++                // ---------TESI----------
+                 w.write_element(&self.ei.to_bytes().as_slice())?;
+                 w.write_element(&self.fi.to_bytes().as_slice())?;
+                 Ok(())
+@@ -628,9 +634,17 @@ fn h2(g1: &GroupElement, g2: &GroupElement, g3: &GroupElement) -> SizedBigInt {
+     let mut buf: Vec<u8> = Vec::new();
+     let q = g1.get_order();
+ 
+-    buf = [&buf[..], &g1.to_bytes()[..]].concat();
+-    buf = [&buf[..], &g2.to_bytes()[..]].concat();
+-    buf = [&buf[..], &g3.to_bytes()[..]].concat();
++    // ---------TESI----------
++
++    // Formato compresso SEC1 (02/03 || y_be, 33 byte) invece di non compresso (65 byte).
++    // ECP::frombytes di mcore decomprime automaticamente il formato 02/03,
++    // quindi from_bytes di GroupElement non richiede modifiche.
++    // Il buffer di hash scende da 195 a 99 byte.
++    buf = [&buf[..], &g1.to_compressed_bytes_sec1()[..]].concat();
++    buf = [&buf[..], &g2.to_compressed_bytes_sec1()[..]].concat();
++    buf = [&buf[..], &g3.to_compressed_bytes_sec1()[..]].concat();
++
++    // ---------TESI----------
+ 
+     let mut hash = HASH256::new();
+     hash.process_array(&buf);
+diff --git a/src/core/schemes/src/groups/group.rs b/src/core/schemes/src/groups/group.rs
+index 8b49f63..6e2234c 100644
+--- a/src/core/schemes/src/groups/group.rs
++++ b/src/core/schemes/src/groups/group.rs
+@@ -96,6 +96,13 @@ pub trait GroupOperations {
+     /* encode group element in bytes (big endian) */
+     fn to_bytes(&self) -> Vec<u8>;
+ 
++    // ---------TESI----------
++
++    /* encode group element in compressed SEC1 bytes (02/03 || y_be) */
++    fn to_compressed_bytes_sec1(&self) -> Vec<u8>;
++
++    // ---------TESI----------
++
+     /* convert group element to hex string (big endian) */
+     fn to_string(&self) -> String;
+ 
