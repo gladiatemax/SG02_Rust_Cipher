@@ -11,3 +11,9 @@ path = "src/lib.rs"
 [dependencies]
 syn = "0.15.23"
 quote = "0.6.10"
+
+# --- aggiunto da sg02-encrypt/scripts/vendor-thetacrypt.sh ---------------
+[lints.rust]
+warnings = "allow"
+legacy_derive_helpers = "allow"
+dangerous_implicit_autorefs = "allow"

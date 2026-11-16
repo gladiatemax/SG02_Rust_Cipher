@@ -1,6 +1,6 @@
 # thetacrypt (copia parziale)
 
-Copiato con `scripts/vendor-thetacrypt.sh` il 2026-11-16 14:54 UTC.
+Copiato con `scripts/vendor-thetacrypt.sh` il 2026-11-16 14:59 UTC.
 Contiene solo LICENSE.txt, src/core/schemes src/proto. Licenza: Apache 2.0 (LICENSE.txt).
 
 - Upstream: https://github.com/cryptobern/thetacrypt
@@ -16,3 +16,15 @@ Contiene solo LICENSE.txt, src/core/schemes src/proto. Licenza: Apache 2.0 (LICE
 
 Il diff dei file tracciati e' in `MODIFICHE.patch`. I file marcati `??` sono
 nuovi (non tracciati) e compaiono per intero nella copia.
+
+## Modifiche introdotte dalla copia
+
+In fondo a questi file e' stata aggiunta una tabella `[lints.rust]` che
+disattiva gli avvisi del compilatore e due lint resi errori dalle toolchain
+recenti. Non compare in `MODIFICHE.patch`, che descrive solo le modifiche
+presenti nella sorgente:
+
+- `src/core/schemes/Cargo.toml`
+- `src/core/schemes/derive/Cargo.toml`
+- `src/core/schemes/mcore/Cargo.toml`
+- `src/proto/Cargo.toml`
